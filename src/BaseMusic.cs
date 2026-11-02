@@ -24,7 +24,7 @@ using UnityEngine.SceneManagement;
 
 namespace BaseMusic
 {
-    [BepInPlugin("pl.krystian.basemusic", "Muzyka i radio w bazie", "1.1.0")]
+    [BepInPlugin("pl.krystian.basemusic", "Muzyka i radio w bazie", "1.2.0")]
     public class BaseMusicPlugin : BaseUnityPlugin
     {
         private static BaseMusicPlugin instance;
@@ -42,6 +42,7 @@ namespace BaseMusic
         {
             if (instance == null) return;
             instance.userPaused = false;
+            if (instance.RadioMode && instance.remoteStation >= 0) { instance.ShowToast("Stację wybiera host"); return; }
             if (instance.RadioMode)
             {
                 if (instance.stations.Count > 0)
@@ -56,8 +57,95 @@ namespace BaseMusic
         public static void ToggleSource() { if (instance != null) instance.cSource.Value = instance.RadioMode ? "Pliki" : "Radio"; }
         public static void PlaceRadioHere()
         {
-            if (instance != null && instance.PlaceInFrontOfCamera(instance.HomeTransform())) instance.ShowToast("Radio postawione tutaj");
+            if (instance == null) return;
+            if (instance.remoteOffset != null) { instance.ShowToast("Radio ustawia host"); return; }
+            if (instance.PlaceInFrontOfCamera(instance.HomeTransform())) instance.ShowToast("Radio postawione tutaj");
         }
+        // ---------- synchronizacja z hostem ----------
+        private string remoteOffset;      // pozycja radia od hosta (u gości)
+        private int remoteStation = -1;   // stacja od hosta (u gości)
+        private float nextSync, lastSentAt;
+        private string lastSent = "";
+
+        private void SyncWithHost()
+        {
+            if (Time.unscaledTime < nextSync) return;
+            nextSync = Time.unscaledTime + 1f;
+            if (IsHostNow())
+            {
+                remoteOffset = null; remoteStation = -1;
+                string data = (cRadioOffset.Value ?? "") + "|" + cStationIndex.Value;
+                if (data != lastSent || Time.unscaledTime - lastSentAt > 10f)
+                {
+                    LobbySet("gnome_radio", data);
+                    lastSent = data; lastSentAt = Time.unscaledTime;
+                }
+                return;
+            }
+            string d = LobbyGet("gnome_radio");
+            if (string.IsNullOrEmpty(d)) { remoteOffset = null; remoteStation = -1; return; }
+            string[] p = d.Split('|');
+            remoteOffset = p.Length > 0 && p[0].Length > 0 ? p[0] : null;
+            int st;
+            if (p.Length > 1 && int.TryParse(p[1], out st) && st != remoteStation)
+            {
+                remoteStation = st;
+                if (RadioMode && radioOpen && stations.Count > 0) OpenStation();
+            }
+        }
+
+        // ---------- wspólne dane w lobby Steam (host zapisuje, reszta czyta) ----------
+        private static object CurrentLobby()
+        {
+            try
+            {
+                Type lm = FindTypeStatic("LobbyManager");
+                FieldInfo f = lm != null ? lm.GetField("instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static) : null;
+                return f != null ? f.GetValue(null) : null;
+            }
+            catch (Exception) { return null; }
+        }
+        internal static string LobbyGet(string key)
+        {
+            try
+            {
+                object l = CurrentLobby();
+                if (l == null) return null;
+                MethodInfo m = l.GetType().GetMethod("GetData", new Type[] { typeof(string) });
+                return m != null ? m.Invoke(l, new object[] { key }) as string : null;
+            }
+            catch (Exception) { return null; }
+        }
+        internal static void LobbySet(string key, string value)
+        {
+            try
+            {
+                object l = CurrentLobby();
+                if (l == null) return;
+                MethodInfo m = l.GetType().GetMethod("SetData", new Type[] { typeof(string), typeof(string) });
+                if (m != null) m.Invoke(l, new object[] { key, value });
+            }
+            catch (Exception) { }
+        }
+        internal static bool IsHostNow()
+        {
+            try
+            {
+                Type nmT = Type.GetType("Unity.Netcode.NetworkManager, Unity.Netcode.Runtime");
+                object nm = nmT != null ? nmT.GetProperty("Singleton").GetValue(null, null) : null;
+                return nm != null && (bool)nm.GetType().GetProperty("IsServer").GetValue(nm, null);
+            }
+            catch (Exception) { return false; }
+        }
+        private static Type FindTypeStatic(string name)
+        {
+            foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try { Type t = a.GetType(name, false); if (t != null) return t; } catch (Exception) { }
+            }
+            return null;
+        }
+
         // ---------- ustawienia ----------
         private ConfigEntry<bool> cEnabled;
         private ConfigEntry<string> cSource;
@@ -199,6 +287,7 @@ namespace BaseMusic
 
         private void Update()
         {
+            SyncWithHost();
             if (Time.unscaledTime >= nextStateCheck)
             {
                 nextStateCheck = Time.unscaledTime + 0.5f;
@@ -330,7 +419,7 @@ namespace BaseMusic
 
         private KeyValuePair<string, string> CurrentStation()
         {
-            int i = cStationIndex.Value;
+            int i = remoteStation >= 0 ? remoteStation : cStationIndex.Value;
             if (i < 0 || i >= stations.Count) i = 0;
             return stations[i];
         }
@@ -476,9 +565,13 @@ namespace BaseMusic
             if (!radioModel.activeSelf) radioModel.SetActive(true);
 
             Vector3 off;
-            if (!TryParseVector(cRadioOffset.Value, out off))
+            string offStr = remoteOffset ?? cRadioOffset.Value;
+            if (!TryParseVector(offStr, out off) || off.magnitude > 25f)
             {
-                // pierwsze wejście: postaw radio przed graczem
+                if (remoteOffset != null) { radioModel.SetActive(false); return; }
+                // pierwsze wejście: postaw radio przed graczem, gdy naprawdę stoi przy domu
+                Camera c0 = Camera.main;
+                if (c0 == null || home.InverseTransformPoint(c0.transform.position).magnitude > 22f) { radioModel.SetActive(false); return; }
                 if (!PlaceInFrontOfCamera(home)) return;
                 TryParseVector(cRadioOffset.Value, out off);
             }
@@ -591,20 +684,7 @@ namespace BaseMusic
                 if (ev.keyCode == KeyCode.F6)
                 {
                     ev.Use();
-                    userPaused = false;
-                    if (RadioMode)
-                    {
-                        if (stations.Count > 0)
-                        {
-                            cStationIndex.Value = (cStationIndex.Value + 1) % stations.Count;
-                            if (radioOpen) OpenStation();
-                        }
-                    }
-                    else
-                    {
-                        source.Stop();
-                        if (!loading) NextFile();
-                    }
+                    NextStation();
                 }
                 else if (ev.keyCode == KeyCode.F7)
                 {
@@ -621,7 +701,7 @@ namespace BaseMusic
                 else if (ev.keyCode == KeyCode.F9 && RadioMode)
                 {
                     ev.Use();
-                    if (PlaceInFrontOfCamera(HomeTransform())) ShowToast("Radio postawione tutaj");
+                    PlaceRadioHere();
                 }
             }
 

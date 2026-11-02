@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Tablica
 {
-    [BepInPlugin("pl.krystian.tablica", "Tablica gnoma", "1.0.1")]
+    [BepInPlugin("pl.krystian.tablica", "Tablica gnoma", "1.1.0")]
     public class TablicaPlugin : BaseUnityPlugin
     {
         private ConfigEntry<bool> cEnabled;
@@ -161,6 +161,92 @@ namespace Tablica
         }
 
         private const float MaxOffset = 25f;
+
+        // ---------- synchronizacja z hostem (lobby Steam) ----------
+        private string remoteOffset;     // u gości: pozycja od hosta
+        private float remoteYaw, remoteScale = -1f;
+        private float nextSync, lastSentAt;
+        private string lastSent = "";
+        private bool Following { get { return remoteOffset != null; } }
+
+        private void SyncWithHost()
+        {
+            if (Time.unscaledTime < nextSync) return;
+            nextSync = Time.unscaledTime + 1f;
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            if (IsHostNow())
+            {
+                remoteOffset = null;
+                string data = (cOffset.Value ?? "") + "|" + cYaw.Value.ToString("0.##", inv) + "|" + cScale.Value.ToString("0.###", inv);
+                if (data != lastSent || Time.unscaledTime - lastSentAt > 10f)
+                {
+                    LobbySet("gnome_board", data);
+                    lastSent = data; lastSentAt = Time.unscaledTime;
+                }
+                return;
+            }
+            string d = LobbyGet("gnome_board");
+            if (string.IsNullOrEmpty(d)) { remoteOffset = null; return; }
+            string[] p = d.Split('|');
+            if (p.Length < 3 || p[0].Length == 0) { remoteOffset = null; return; }
+            float yaw, sc;
+            remoteOffset = p[0];
+            remoteYaw = float.TryParse(p[1], NumberStyles.Float, inv, out yaw) ? yaw : 0f;
+            remoteScale = float.TryParse(p[2], NumberStyles.Float, inv, out sc) ? sc : 1f;
+        }
+
+        // ---------- wspólne dane w lobby Steam (host zapisuje, reszta czyta) ----------
+        private static object CurrentLobby()
+        {
+            try
+            {
+                Type lm = FindTypeStatic("LobbyManager");
+                FieldInfo f = lm != null ? lm.GetField("instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static) : null;
+                return f != null ? f.GetValue(null) : null;
+            }
+            catch (Exception) { return null; }
+        }
+        internal static string LobbyGet(string key)
+        {
+            try
+            {
+                object l = CurrentLobby();
+                if (l == null) return null;
+                MethodInfo m = l.GetType().GetMethod("GetData", new Type[] { typeof(string) });
+                return m != null ? m.Invoke(l, new object[] { key }) as string : null;
+            }
+            catch (Exception) { return null; }
+        }
+        internal static void LobbySet(string key, string value)
+        {
+            try
+            {
+                object l = CurrentLobby();
+                if (l == null) return;
+                MethodInfo m = l.GetType().GetMethod("SetData", new Type[] { typeof(string), typeof(string) });
+                if (m != null) m.Invoke(l, new object[] { key, value });
+            }
+            catch (Exception) { }
+        }
+        internal static bool IsHostNow()
+        {
+            try
+            {
+                Type nmT = Type.GetType("Unity.Netcode.NetworkManager, Unity.Netcode.Runtime");
+                object nm = nmT != null ? nmT.GetProperty("Singleton").GetValue(null, null) : null;
+                return nm != null && (bool)nm.GetType().GetProperty("IsServer").GetValue(nm, null);
+            }
+            catch (Exception) { return false; }
+        }
+        private static Type FindTypeStatic(string name)
+        {
+            foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try { Type t = a.GetType(name, false); if (t != null) return t; } catch (Exception) { }
+            }
+            return null;
+        }
+
         private string toast = ""; private float toastUntil;
         private void ShowToast(string t) { toast = t; toastUntil = Time.unscaledTime + 5f; }
 
@@ -214,8 +300,10 @@ namespace Tablica
             }
             if (board == null) BuildBoard();
 
+            SyncWithHost();
             Vector3 off;
-            bool valid = TryParseVector(cOffset.Value, out off) && off.magnitude <= MaxOffset;
+            bool valid = TryParseVector(Following ? remoteOffset : cOffset.Value, out off) && off.magnitude <= MaxOffset;
+            if (!valid && Following) { board.SetActive(false); lookingAt = false; return; }
             if (!valid)
             {
                 // stawiamy tablicę dopiero, gdy gracz naprawdę jest przy domu (nie np. tuż po wczytaniu gry)
@@ -227,8 +315,10 @@ namespace Tablica
             }
             if (!board.activeSelf) board.SetActive(true);
             board.transform.position = home.TransformPoint(off);
-            board.transform.rotation = home.rotation * Quaternion.Euler(0f, cYaw.Value, 0f);
-            board.transform.localScale = Vector3.one * Mathf.Clamp(cScale.Value, 0.1f, 10f);
+            float yawNow = Following ? remoteYaw : cYaw.Value;
+            float scaleNow = Following ? remoteScale : cScale.Value;
+            board.transform.rotation = home.rotation * Quaternion.Euler(0f, yawNow, 0f);
+            board.transform.localScale = Vector3.one * Mathf.Clamp(scaleNow, 0.1f, 10f);
 
             // czy gracz patrzy na tablicę z bliska
             lookingAt = false;
@@ -322,7 +412,8 @@ namespace Tablica
             if (ev != null && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.F10 && inBase)
             {
                 ev.Use();
-                if (PlaceInFront(HomeTransform())) ShowToast("Tablica postawiona przed Tobą");
+                if (Following) ShowToast("Tablicę ustawia host gry");
+                else if (PlaceInFront(HomeTransform())) ShowToast("Tablica postawiona przed Tobą");
             }
             if (Time.unscaledTime < toastUntil && toast.Length > 0)
                 GUI.Box(new Rect(Screen.width / 2f - 260f, 140f, 520f, 40f), toast, sPrompt);
@@ -395,9 +486,14 @@ namespace Tablica
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
             if (Has("pl.krystian.modmenu") && GUILayout.Button("Wszystkie mody (F1)", sBtn)) { menuOpen = false; CallStatic("pl.krystian.modmenu", "Open"); }
-            if (GUILayout.Button("Przestaw tablicę tutaj", sBtn)) { menuOpen = false; PlaceInFront(HomeTransform()); }
-            if (GUILayout.Button("Tablica mniejsza", sBtn)) cScale.Value = Mathf.Max(0.2f, cScale.Value * 0.8f);
-            if (GUILayout.Button("Tablica większa", sBtn)) cScale.Value = Mathf.Min(8f, cScale.Value * 1.25f);
+            if (Following)
+                GUILayout.Label("Tablicę i radio ustawia host – widzicie je wszyscy w tym samym miejscu.", sDim);
+            else
+            {
+                if (GUILayout.Button("Przestaw tablicę tutaj", sBtn)) { menuOpen = false; PlaceInFront(HomeTransform()); }
+                if (GUILayout.Button("Tablica mniejsza", sBtn)) cScale.Value = Mathf.Max(0.2f, cScale.Value * 0.8f);
+                if (GUILayout.Button("Tablica większa", sBtn)) cScale.Value = Mathf.Min(8f, cScale.Value * 1.25f);
+            }
             GUILayout.EndHorizontal();
             GUI.DragWindow(new Rect(0, 0, 10000, 50));
         }
