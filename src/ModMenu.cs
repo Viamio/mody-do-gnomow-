@@ -23,7 +23,7 @@ using UnityEngine.SceneManagement;
 
 namespace ModMenu
 {
-    [BepInPlugin("pl.krystian.modmenu", "Mod Menu", "1.2.0")]
+    [BepInPlugin("pl.krystian.modmenu", "Mod Menu", "1.3.0")]
     public class ModMenuPlugin : BaseUnityPlugin
     {
         private class ModRow
@@ -36,12 +36,15 @@ namespace ModMenu
             public bool OriginalLoadOnStart;
             public ConfigEntry<bool> EnabledEntry; // ustawienie "Enabled" (jeśli mod je ma)
             public string Key;          // nazwa pliku moda (do zapisu własnej nazwy)
+            public BaseUnityPlugin Plugin;  // wczytany mod (do ustawień)
+            public bool ShowSettings;
         }
 
         // Własne nazwy modów: BepInEx\config\ModMenu.names.txt  (plik.dll<TAB>nazwa)
         private readonly Dictionary<string, string> customNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ModRow editing;
         private string editText = "";
+        private readonly Dictionary<ConfigEntryBase, string> editBuffers = new Dictionary<ConfigEntryBase, string>();
 
         // Aktualizacje z GitHuba
         private const string RepoName = "Viamio/mody-do-gnomow-";
@@ -85,6 +88,7 @@ namespace ModMenu
                 r.LoadOnStart = true;
                 r.OriginalLoadOnStart = true;
                 r.EnabledEntry = FindEnabledEntry(pi.Instance);
+                r.Plugin = pi.Instance;
                 rows.Add(r);
             }
 
@@ -264,6 +268,13 @@ namespace ModMenu
                     GUILayout.Label(r.LoadOnStart ? "-> zostanie WŁĄCZONY po restarcie gry"
                                                   : "-> zostanie WYŁĄCZONY po restarcie gry", smallStyle);
                 }
+
+                if (r.LoadedNow && r.Plugin != null && r.Plugin.Config != null && r.Plugin.Config.Count > 0)
+                {
+                    if (GUILayout.Button(r.ShowSettings ? "Ustawienia ▲" : "Ustawienia ▼", GUILayout.Width(130)))
+                        r.ShowSettings = !r.ShowSettings;
+                    if (r.ShowSettings) DrawSettings(r.Plugin);
+                }
                 GUILayout.EndVertical();
             }
             GUILayout.EndScrollView();
@@ -362,6 +373,77 @@ namespace ModMenu
             {
                 confirmUpdate = false;
                 Logger.LogError("Nie udalo sie uruchomic aktualizatora: " + e);
+            }
+        }
+
+        // ---------- ustawienia modów (edycja .cfg w grze) ----------
+
+        private void DrawSettings(BaseUnityPlugin plugin)
+        {
+            List<ConfigEntryBase> entries = new List<ConfigEntryBase>();
+            try
+            {
+                foreach (KeyValuePair<ConfigDefinition, ConfigEntryBase> kv in plugin.Config) entries.Add(kv.Value);
+            }
+            catch (Exception) { return; }
+
+            string lastSection = null;
+            foreach (ConfigEntryBase e in entries)
+            {
+                if (e.Definition.Section != lastSection)
+                {
+                    lastSection = e.Definition.Section;
+                    GUILayout.Label("[" + lastSection + "]", smallStyle);
+                }
+                string desc = e.Description != null ? e.Description.Description : "";
+                Type t = e.SettingType;
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(12);
+                if (t == typeof(bool))
+                {
+                    bool cur = (bool)e.BoxedValue;
+                    bool nv = GUILayout.Toggle(cur, " " + e.Definition.Key);
+                    if (nv != cur) e.BoxedValue = nv;
+                }
+                else if (t == typeof(int) || t == typeof(float) || t == typeof(double) || t == typeof(string))
+                {
+                    GUILayout.Label(e.Definition.Key, GUILayout.Width(150));
+                    string buf;
+                    if (!editBuffers.TryGetValue(e, out buf)) buf = Convert.ToString(e.BoxedValue, System.Globalization.CultureInfo.InvariantCulture);
+                    string nb = GUILayout.TextField(buf ?? "", GUILayout.MinWidth(160));
+                    editBuffers[e] = nb;
+                    if (GUILayout.Button("OK", GUILayout.Width(40))) ApplySetting(e, nb);
+                }
+                else
+                {
+                    GUILayout.Label(e.Definition.Key + " = " + e.BoxedValue + "  (zmień w pliku .cfg)", smallStyle);
+                }
+                GUILayout.EndHorizontal();
+                if (desc.Length > 0)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Space(24);
+                    GUILayout.Label(desc, smallStyle);
+                    GUILayout.EndHorizontal();
+                }
+            }
+        }
+
+        private void ApplySetting(ConfigEntryBase e, string text)
+        {
+            try
+            {
+                System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
+                string t = (text ?? "").Trim();
+                if (e.SettingType == typeof(int)) e.BoxedValue = int.Parse(t, inv);
+                else if (e.SettingType == typeof(float)) e.BoxedValue = float.Parse(t.Replace(',', '.'), inv);
+                else if (e.SettingType == typeof(double)) e.BoxedValue = double.Parse(t.Replace(',', '.'), inv);
+                else e.BoxedValue = text ?? "";
+                editBuffers.Remove(e);
+            }
+            catch (Exception)
+            {
+                editBuffers[e] = Convert.ToString(e.BoxedValue, System.Globalization.CultureInfo.InvariantCulture);
             }
         }
 
