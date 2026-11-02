@@ -5,7 +5,7 @@
 # - wylaczone mody (.dll.off) zostaja wylaczone.
 # Plik celowo bez polskich znakow (PowerShell 5.1).
 
-param([string]$StartDir = "")
+param([string]$StartDir = "", [switch]$WaitForGame, [switch]$Relaunch)
 
 $ErrorActionPreference = "Stop"
 $Repo = "Viamio/mody-do-gnomow-"
@@ -56,6 +56,12 @@ if (-not $game) {
 }
 Say "Gra: $game"
 
+if ($WaitForGame) {
+    Say "Czekam, az gra sie zamknie..."
+    $waited = 0
+    while ((Get-Process -Name "Gnomium" -ErrorAction SilentlyContinue) -and $waited -lt 60) { Start-Sleep -Seconds 1; $waited++ }
+    Start-Sleep -Seconds 2
+}
 if (Get-Process -Name "Gnomium" -ErrorAction SilentlyContinue) {
     Say "[BLAD] Gra jest uruchomiona. Zamknij ja i uruchom aktualizator ponownie." "Red"
     exit 1
@@ -137,7 +143,13 @@ try {
     Say ""
     if ($fail -eq 0) {
         Say "[OK] Zaktualizowano $ok modow$(if ($version) { " (wersja $version)" })." "Green"
-        Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK (host)."
+        if ($Relaunch) {
+            Say "Uruchamiam gre ponownie..."
+            Start-Sleep -Seconds 2
+            Start-Process "steam://rungameid/3844970"
+        } else {
+            Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK (host)."
+        }
     } else {
         Say "[UWAGA] $ok modow OK, $fail z bledem. Wyslij zrzut ekranu autorowi modow." "Yellow"
     }

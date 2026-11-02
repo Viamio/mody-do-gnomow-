@@ -12,6 +12,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Threading;
 using System.Text;
 using BepInEx;
 using BepInEx.Bootstrap;
@@ -21,7 +23,7 @@ using UnityEngine.SceneManagement;
 
 namespace ModMenu
 {
-    [BepInPlugin("pl.krystian.modmenu", "Mod Menu", "1.1.0")]
+    [BepInPlugin("pl.krystian.modmenu", "Mod Menu", "1.2.0")]
     public class ModMenuPlugin : BaseUnityPlugin
     {
         private class ModRow
@@ -41,6 +43,13 @@ namespace ModMenu
         private ModRow editing;
         private string editText = "";
 
+        // Aktualizacje z GitHuba
+        private const string RepoName = "Viamio/mody-do-gnomow-";
+        private string localVersion = "";
+        private volatile string remoteVersion;   // null = jeszcze nie wiadomo / brak internetu
+        private volatile bool versionChecked;
+        private bool confirmUpdate;
+
         private readonly List<ModRow> rows = new List<ModRow>();
         private bool open;
         private Rect window = new Rect(60, 60, 560, 460);
@@ -54,6 +63,7 @@ namespace ModMenu
         {
             Application.quitting += ApplyPendingChanges;
             LoadNames();
+            CheckForUpdate();
             Logger.LogInfo("Mod Menu zaladowany. F1 = lista modow.");
         }
 
@@ -261,12 +271,98 @@ namespace ModMenu
             if (anyPending)
                 GUILayout.Label("Zmiany plików zostaną zapisane, gdy zamkniesz grę.", smallStyle);
 
+            DrawUpdateSection();
+
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Odśwież")) BuildList();
             if (GUILayout.Button("Zamknij")) SetOpen(false);
             GUILayout.EndHorizontal();
 
             GUI.DragWindow(new Rect(0, 0, 10000, 22));
+        }
+
+        // ---------- aktualizacja ----------
+
+        private void CheckForUpdate()
+        {
+            try
+            {
+                string f = Path.Combine(Paths.PluginPath, "gnome-mods.version");
+                if (File.Exists(f)) localVersion = File.ReadAllText(f).Trim();
+            }
+            catch (Exception) { }
+
+            Thread t = new Thread(delegate ()
+            {
+                try
+                {
+                    try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; } catch (Exception) { }
+                    using (WebClient wc = new WebClient())
+                    {
+                        wc.Headers.Add("User-Agent", "gnome-mods");
+                        remoteVersion = wc.DownloadString("https://raw.githubusercontent.com/" + RepoName + "/main/VERSION?t=" + DateTime.UtcNow.Ticks).Trim();
+                    }
+                }
+                catch (Exception) { remoteVersion = null; }
+                versionChecked = true;
+            });
+            t.IsBackground = true;
+            t.Start();
+        }
+
+        private void DrawUpdateSection()
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            string info;
+            bool newer = false;
+            if (!versionChecked) info = "Sprawdzam aktualizacje...";
+            else if (remoteVersion == null) info = "Nie udało się sprawdzić aktualizacji (brak internetu?).";
+            else if (localVersion.Length == 0) info = "Najnowsza wersja: " + remoteVersion;
+            else if (remoteVersion != localVersion) { info = "Dostępna nowa wersja: " + remoteVersion + "  (masz " + localVersion + ")"; newer = true; }
+            else info = "Masz najnowszą wersję (" + localVersion + ").";
+            GUILayout.Label(info, newer ? GUI.skin.box : smallStyle);
+
+            if (!confirmUpdate)
+            {
+                if (GUILayout.Button(newer ? "AKTUALIZUJ MODY" : "Aktualizuj mody"))
+                    confirmUpdate = true;
+            }
+            else
+            {
+                GUILayout.Label("Gra się zamknie, mody się zaktualizują i gra uruchomi się ponownie. Kontynuować?", smallStyle);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Tak, aktualizuj")) StartUpdate();
+                if (GUILayout.Button("Nie")) confirmUpdate = false;
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndVertical();
+        }
+
+        private void StartUpdate()
+        {
+            try
+            {
+                string game = Paths.GameRootPath.Replace("'", "''");
+                string url = "https://raw.githubusercontent.com/" + RepoName + "/main/scripts/aktualizuj.ps1";
+                string ps =
+                    "[Net.ServicePointManager]::SecurityProtocol='Tls12';" +
+                    "$p = Join-Path $env:TEMP 'gnome_mods_aktualizuj.ps1';" +
+                    "try { Invoke-WebRequest -UseBasicParsing '" + url + "' -OutFile $p } catch { Write-Host ('[BLAD] Brak polaczenia z GitHubem: ' + $_.Exception.Message) -ForegroundColor Red; Read-Host 'Enter = zamknij'; exit 1 };" +
+                    "& $p -StartDir '" + game + "' -WaitForGame -Relaunch;" +
+                    "if ($LASTEXITCODE -ne 0) { Read-Host 'Enter = zamknij' }";
+
+                ProcessStartInfo psi = new ProcessStartInfo("powershell.exe",
+                    "-NoProfile -ExecutionPolicy Bypass -Command \"" + ps + "\"");
+                psi.UseShellExecute = true;
+                Process.Start(psi);
+                Logger.LogInfo("Uruchomiono aktualizator - zamykam gre.");
+                Application.Quit();
+            }
+            catch (Exception e)
+            {
+                confirmUpdate = false;
+                Logger.LogError("Nie udalo sie uruchomic aktualizatora: " + e);
+            }
         }
 
         private string DisplayName(ModRow r)

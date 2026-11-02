@@ -5,7 +5,7 @@ Zestaw modów (BepInEx 5) do gry **Burglin' Gnomes**.
 | Mod | Co robi | Kto musi mieć |
 |---|---|---|
 | **Keep Progress On Loss** | Po przegranej zostaje dom, ulepszenia, meble i surowce w magazynie. Tracisz tylko ekwipunek z wyprawy. | host |
-| **Mod Menu** | Przycisk **MODY** w menu głównym i **F1** w grze: lista modów, włączanie/wyłączanie, zmiana nazw. | każdy, kto chce menu |
+| **Mod Menu** | Przycisk **MODY** w menu głównym i **F1** w grze: lista modów, włączanie/wyłączanie, zmiana nazw i przycisk **Aktualizuj mody**. | każdy, kto chce menu |
 | **Gnome AK** | Na start dnia host dostaje broń z gry przerobioną na „AK”: 30 naboi, przeładowanie, ogień ciągły, rosnący rozrzut. **F2** = kolejna broń (host). | host (ogień ciągły – każdy z modem) |
 
 ## Instalacja i aktualizacja (jeden plik)
@@ -15,7 +15,9 @@ Zestaw modów (BepInEx 5) do gry **Burglin' Gnomes**.
    (Steam → prawy klik na grze → Zarządzaj → Przeglądaj pliki lokalne).
 3. Kliknij `AKTUALIZUJ.bat` dwa razy. Gotowe – uruchom grę normalnie przez Steam.
 
-Aktualizacja = **zamknij grę i kliknij AKTUALIZUJ.bat jeszcze raz**.
+Aktualizacja – dwa sposoby:
+- **w grze:** F1 (albo przycisk MODY) → **Aktualizuj mody** – gra sama się zamknie, zaktualizuje i uruchomi ponownie,
+- **albo:** zamknij grę i kliknij `AKTUALIZUJ.bat` jeszcze raz.
 
 Skrypt sam:
 - znajdzie grę,
