@@ -430,7 +430,7 @@ namespace Rozwoj
             if (small == null)
             {
                 small = new GUIStyle(GUI.skin.label); small.fontSize = 12; small.wordWrap = true;
-                bold = new GUIStyle(GUI.skin.label); bold.fontStyle = FontStyle.Bold;
+                bold = new GUIStyle(GUI.skin.label); bold.fontSize = 14;
             }
             if (Time.unscaledTime < toastUntil && toast.Length > 0)
                 GUI.Box(new Rect(Screen.width / 2f - 260f, Screen.height - 120f, 520f, 36f), toast);

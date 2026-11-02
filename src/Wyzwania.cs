@@ -392,7 +392,7 @@ namespace Wyzwania
             {
                 bannerStyle = new GUIStyle(GUI.skin.box);
                 bannerStyle.fontSize = 20;
-                bannerStyle.alignment = TextAnchor.MiddleCenter;
+                // (wyrownanie domyslne - bez TextRenderingModule)
                 bannerStyle.wordWrap = true;
             }
             GUI.Box(new Rect(Screen.width / 2f - 300f, 90f, 600f, banner.Contains("\n") ? 80f : 48f), banner, bannerStyle);

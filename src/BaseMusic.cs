@@ -599,7 +599,7 @@ namespace BaseMusic
                 {
                     toastStyle = new GUIStyle(GUI.skin.box);
                     toastStyle.fontSize = 16;
-                    toastStyle.alignment = TextAnchor.MiddleCenter;
+                    // (wyrownanie domyslne - bez TextRenderingModule)
                 }
                 float w = Mathf.Min(520f, 40f + toast.Length * 9f);
                 GUI.Box(new Rect(Screen.width - w - 20f, 20f, w, 36f), toast, toastStyle);
