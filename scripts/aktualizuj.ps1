@@ -154,7 +154,8 @@ try {
             Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK (host), F6-F9 = muzyka i radio w bazie."
         }
     } else {
-        Say "[UWAGA] $ok modow OK, $fail z bledem. Wyslij zrzut ekranu autorowi modow." "Yellow"
+        Say "[UWAGA] $ok modow OK, $fail z bledem. Zrob zrzut ekranu tego okna i wyslij autorowi modow." "Yellow"
+        exit 1
     }
 }
 catch {
