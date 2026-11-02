@@ -358,7 +358,7 @@ namespace ModMenu
                 string ps =
                     "[Net.ServicePointManager]::SecurityProtocol='Tls12';" +
                     "$p = Join-Path $env:TEMP 'gnome_mods_aktualizuj.ps1';" +
-                    "try { Invoke-WebRequest -UseBasicParsing '" + url + "' -OutFile $p } catch { Write-Host ('[BLAD] Brak polaczenia z GitHubem: ' + $_.Exception.Message) -ForegroundColor Red; Read-Host 'Enter = zamknij'; exit 1 };" +
+                    "try { Invoke-WebRequest -UseBasicParsing ('" + url + "?t=' + [DateTime]::Now.Ticks) -OutFile $p } catch { Write-Host ('[BLAD] Brak polaczenia z GitHubem: ' + $_.Exception.Message) -ForegroundColor Red; Read-Host 'Enter = zamknij'; exit 1 };" +
                     "& $p -StartDir '" + game + "' -WaitForGame -Relaunch;" +
                     "if ($LASTEXITCODE -ne 0) { Read-Host 'Enter = zamknij' }";
 

@@ -105,14 +105,11 @@ try {
     $verFile = Join-Path $src.FullName "VERSION"
     if (Test-Path -LiteralPath $verFile) { $version = (Get-Content -LiteralPath $verFile -Raw).Trim() }
 
-    $refs = @(
-        "$managed\mscorlib.dll", "$managed\netstandard.dll", "$managed\System.dll", "$managed\System.Core.dll",
-        "$managed\UnityEngine.dll", "$managed\UnityEngine.CoreModule.dll", "$managed\UnityEngine.IMGUIModule.dll",
-        "$managed\UnityEngine.InputLegacyModule.dll", "$managed\UnityEngine.AudioModule.dll",
-        "$managed\UnityEngine.UnityWebRequestModule.dll", "$managed\UnityEngine.UnityWebRequestAudioModule.dll",
-        "$managed\UnityEngine.PhysicsModule.dll", "$managed\UnityEngine.TextRenderingModule.dll",
-        "$core\BepInEx.dll", "$core\0Harmony.dll"
-    ) | Where-Object { Test-Path -LiteralPath $_ }
+    # biblioteki: podstawowe .NET + WSZYSTKIE moduly silnika Unity + BepInEx/Harmony
+    $refs = @("$managed\mscorlib.dll", "$managed\netstandard.dll", "$managed\System.dll", "$managed\System.Core.dll")
+    $refs += (Get-ChildItem -LiteralPath $managed -Filter "UnityEngine*.dll" | ForEach-Object { $_.FullName })
+    $refs += @("$core\BepInEx.dll", "$core\0Harmony.dll")
+    $refs = $refs | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -Unique
 
     $ok = 0; $fail = 0
     foreach ($cs in Get-ChildItem -LiteralPath $srcDir -Filter "*.cs") {
