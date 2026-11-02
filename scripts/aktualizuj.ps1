@@ -151,7 +151,7 @@ try {
             Start-Sleep -Seconds 2
             Start-Process "steam://rungameid/3844970"
         } else {
-            Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK (host), F6-F9 = muzyka i radio w bazie."
+            Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK, F3 = dziennik, F4 = rozwoj, F6-F9 = radio."
         }
     } else {
         Say "[UWAGA] $ok modow OK, $fail z bledem. Zrob zrzut ekranu tego okna i wyslij autorowi modow." "Yellow"

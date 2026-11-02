@@ -10,6 +10,8 @@ Zestaw modów (BepInEx 5) do gry **Burglin' Gnomes**.
 | **Muzyka i radio w bazie** | W bazie stoi radio z gry i gra **radio internetowe** – dźwięk dochodzi z radia (bliżej = głośniej). Albo Twoje pliki **.mp3/.ogg/.wav** z folderu **`Muzyka`**. Cichnie na wyprawie. **F6** = następna stacja/utwór, **F7** = pauza, **F8** = radio ⇄ pliki, **F9** = postaw radio przed sobą. | każdy, kto chce słyszeć |
 | **Kopia zapisu** | Przed każdą wyprawą host robi kopię zapisu gry (`AppData\LocalLow\...\SaveGames\Kopie`), trzyma 15 ostatnich. | host |
 | **Dziennik i statystyki** | Na koniec dnia tabelka: kto ile gnomium oddał i kto ile razy zginął. Historia wszystkich dni pod **F3**. | każdy (gnomium liczy host) |
+| **Wyzwania dnia** | Losowy **modyfikator dnia** (ciemność, mgła, dziadek z kawą, zaspany dziadek, niska grawitacja, złota gorączka), **wściekły dziadek** (hałas = szybszy), **alarm** po serii hałasów, **skarb dnia** – świecący przedmiot wart 5×. | host (efekty wizualne – każdy z modem) |
+| **Rozwój gnoma** | **F4**: Żołędzie za każdy dzień, **klasy** (Złodziej, Siłacz, Zwiadowca, Saper), **umiejętności** (szybkość, skok, stamina, siła, hak), ulepszenia drużyny (**plecak** +1 miejsce, **ciche kroki**), **osiągnięcia**. | każdy dla siebie (drużynowe – host) |
 
 ## Instalacja i aktualizacja (jeden plik)
 
