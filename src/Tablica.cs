@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Tablica
 {
-    [BepInPlugin("pl.krystian.tablica", "Tablica gnoma", "1.0.0")]
+    [BepInPlugin("pl.krystian.tablica", "Tablica gnoma", "1.0.1")]
     public class TablicaPlugin : BaseUnityPlugin
     {
         private ConfigEntry<bool> cEnabled;
@@ -160,6 +160,10 @@ namespace Tablica
             board.SetActive(false);
         }
 
+        private const float MaxOffset = 25f;
+        private string toast = ""; private float toastUntil;
+        private void ShowToast(string t) { toast = t; toastUntil = Time.unscaledTime + 5f; }
+
         private bool PlaceInFront(Transform home)
         {
             Camera cam = Camera.main;
@@ -211,10 +215,15 @@ namespace Tablica
             if (board == null) BuildBoard();
 
             Vector3 off;
-            if (!TryParseVector(cOffset.Value, out off))
+            bool valid = TryParseVector(cOffset.Value, out off) && off.magnitude <= MaxOffset;
+            if (!valid)
             {
+                // stawiamy tablicę dopiero, gdy gracz naprawdę jest przy domu (nie np. tuż po wczytaniu gry)
+                Camera c0 = Camera.main;
+                if (c0 == null || home.InverseTransformPoint(c0.transform.position).magnitude > MaxOffset - 3f) return;
                 if (!PlaceInFront(home)) return;
                 TryParseVector(cOffset.Value, out off);
+                ShowToast("Tablica gnoma stoi przed Tobą (F10 = przestaw)");
             }
             if (!board.activeSelf) board.SetActive(true);
             board.transform.position = home.TransformPoint(off);
@@ -309,6 +318,14 @@ namespace Tablica
             if (!cEnabled.Value) return;
             EnsureStyles();
             Event ev = Event.current;
+
+            if (ev != null && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.F10 && inBase)
+            {
+                ev.Use();
+                if (PlaceInFront(HomeTransform())) ShowToast("Tablica postawiona przed Tobą");
+            }
+            if (Time.unscaledTime < toastUntil && toast.Length > 0)
+                GUI.Box(new Rect(Screen.width / 2f - 260f, 140f, 520f, 40f), toast, sPrompt);
 
             if (!menuOpen && lookingAt && board != null && board.activeSelf)
             {
