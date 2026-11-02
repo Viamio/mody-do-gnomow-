@@ -110,7 +110,7 @@ try {
         "$managed\UnityEngine.dll", "$managed\UnityEngine.CoreModule.dll", "$managed\UnityEngine.IMGUIModule.dll",
         "$managed\UnityEngine.InputLegacyModule.dll", "$managed\UnityEngine.AudioModule.dll",
         "$managed\UnityEngine.UnityWebRequestModule.dll", "$managed\UnityEngine.UnityWebRequestAudioModule.dll",
-        "$managed\UnityEngine.PhysicsModule.dll",
+        "$managed\UnityEngine.PhysicsModule.dll", "$managed\UnityEngine.TextRenderingModule.dll",
         "$core\BepInEx.dll", "$core\0Harmony.dll"
     ) | Where-Object { Test-Path -LiteralPath $_ }
 
