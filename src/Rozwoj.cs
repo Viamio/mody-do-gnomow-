@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace Rozwoj
 {
-    [BepInPlugin("pl.krystian.rozwoj", "Rozwój gnoma", "1.0.0")]
+    [BepInPlugin("pl.krystian.rozwoj", "Rozwój gnoma", "1.1.0")]
     public class RozwojPlugin : BaseUnityPlugin
     {
         internal static RozwojPlugin Instance;
@@ -421,21 +421,112 @@ namespace Rozwoj
 
         private void ShowToast(string t, float s) { toast = t; toastUntil = Time.unscaledTime + s; }
 
+        // Wywoływane z Tablicy gnoma (i innych modów) przez refleksję.
+        public static void OpenTab(int t)
+        {
+            if (Instance == null) return;
+            Instance.tab = Mathf.Clamp(t, 0, 3);
+            Instance.showWindow = true;
+            Instance.centerWindow = true;
+        }
+        public static bool IsOpen() { return Instance != null && Instance.showWindow; }
+
+        // ---------- wygląd ----------
+        private bool centerWindow = true;
+        private GUIStyle sPanel, sTitle, sHeader, sText, sTextDim, sCard, sCardSel, sBtn, sBtnBig, sTab, sTabSel, sPips, sToast;
+        private static readonly Color cBg = new Color(0.14f, 0.10f, 0.07f, 0.97f);
+        private static readonly Color cCard = new Color(0.25f, 0.18f, 0.12f, 1f);
+        private static readonly Color cCardSel = new Color(0.22f, 0.36f, 0.18f, 1f);
+        private static readonly Color cBtn = new Color(0.55f, 0.38f, 0.16f, 1f);
+        private static readonly Color cBtnHover = new Color(0.72f, 0.52f, 0.22f, 1f);
+        private static readonly Color cGold = new Color(1f, 0.82f, 0.38f, 1f);
+        private static readonly Color cCream = new Color(0.97f, 0.93f, 0.84f, 1f);
+        private static readonly Color[] ClassColors = {
+            new Color(0.45f, 0.45f, 0.45f), new Color(0.50f, 0.30f, 0.62f), new Color(0.72f, 0.24f, 0.20f),
+            new Color(0.28f, 0.58f, 0.30f), new Color(0.85f, 0.52f, 0.15f) };
+
+        private static Texture2D Tex(Color c)
+        {
+            Texture2D t = new Texture2D(1, 1);
+            t.SetPixel(0, 0, c);
+            t.Apply();
+            t.hideFlags = HideFlags.HideAndDontSave;
+            return t;
+        }
+
+        private static GUIStyle Box(Color bg, int pad)
+        {
+            GUIStyle g = new GUIStyle();
+            g.normal.background = Tex(bg);
+            g.padding = new RectOffset(pad, pad, pad, pad);
+            g.margin = new RectOffset(4, 4, 4, 4);
+            return g;
+        }
+
+        private static GUIStyle Label(int size, Color col, bool boldText, TextAnchor align)
+        {
+            GUIStyle g = new GUIStyle();
+            g.fontSize = size;
+            g.normal.textColor = col;
+            g.wordWrap = true;
+            g.alignment = align;
+            g.richText = true;
+            if (boldText) g.fontStyle = FontStyle.Bold;
+            g.padding = new RectOffset(2, 2, 2, 2);
+            return g;
+        }
+
+        private static GUIStyle Button(int size, Color normal, Color hover)
+        {
+            GUIStyle g = new GUIStyle();
+            g.fontSize = size;
+            g.fontStyle = FontStyle.Bold;
+            g.alignment = TextAnchor.MiddleCenter;
+            g.normal.background = Tex(normal); g.normal.textColor = cCream;
+            g.hover.background = Tex(hover); g.hover.textColor = Color.white;
+            g.active.background = Tex(hover * 0.85f); g.active.textColor = Color.white;
+            g.padding = new RectOffset(10, 10, 8, 8);
+            g.margin = new RectOffset(4, 4, 4, 4);
+            return g;
+        }
+
+        private void EnsureStyles()
+        {
+            if (sPanel != null) return;
+            sPanel = Box(cBg, 14);
+            sTitle = Label(26, cGold, true, TextAnchor.MiddleLeft);
+            sHeader = Label(18, cCream, true, TextAnchor.MiddleLeft);
+            sText = Label(14, cCream, false, TextAnchor.UpperLeft);
+            sTextDim = Label(13, new Color(0.8f, 0.74f, 0.62f), false, TextAnchor.UpperLeft);
+            sPips = Label(18, cGold, false, TextAnchor.MiddleLeft);
+            sCard = Box(cCard, 10);
+            sCardSel = Box(cCardSel, 10);
+            sBtn = Button(14, cBtn, cBtnHover);
+            sBtnBig = Button(17, new Color(0.30f, 0.52f, 0.24f), new Color(0.40f, 0.66f, 0.32f));
+            sTab = Button(15, new Color(0.22f, 0.16f, 0.11f), new Color(0.38f, 0.27f, 0.16f));
+            sTabSel = Button(15, cBtn, cBtnHover);
+            sToast = Box(new Color(0.12f, 0.09f, 0.06f, 0.92f), 10);
+            sToast.fontSize = 16; sToast.alignment = TextAnchor.MiddleCenter; sToast.normal.textColor = cGold; sToast.fontStyle = FontStyle.Bold;
+        }
+
         private void OnGUI()
         {
             if (!cEnabled.Value) return;
             Event ev = Event.current;
-            if (ev != null && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.F4) { ev.Use(); showWindow = !showWindow; }
+            if (ev != null && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.F4) { ev.Use(); showWindow = !showWindow; centerWindow = true; }
+            if (ev != null && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.Escape && showWindow) { ev.Use(); showWindow = false; }
 
-            if (small == null)
-            {
-                small = new GUIStyle(GUI.skin.label); small.fontSize = 12; small.wordWrap = true;
-                bold = new GUIStyle(GUI.skin.label); bold.fontSize = 14;
-            }
+            EnsureStyles();
             if (Time.unscaledTime < toastUntil && toast.Length > 0)
-                GUI.Box(new Rect(Screen.width / 2f - 260f, Screen.height - 120f, 520f, 36f), toast);
+                GUI.Box(new Rect(Screen.width / 2f - 300f, Screen.height - 130f, 600f, 44f), toast, sToast);
 
-            if (showWindow) window = GUI.Window(0x726F7A77, window, DrawWindow, "Rozwój gnoma (F4 - zamknij)");
+            if (!showWindow) return;
+            float w = Mathf.Min(900f, Screen.width - 40f), h = Mathf.Min(600f, Screen.height - 40f);
+            if (centerWindow) { window = new Rect((Screen.width - w) / 2f, (Screen.height - h) / 2f, w, h); centerWindow = false; }
+            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            window = GUI.Window(0x726F7A77, window, DrawWindow, GUIContent.none, sPanel);
         }
 
         private void LateUpdate()
@@ -443,80 +534,131 @@ namespace Rozwoj
             if (showWindow) { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
         }
 
-        private void DrawWindow(int id)
+        private static string Pips(int lvl, int max)
         {
-            GUILayout.Label("Żołędzie: " + Get("zoledzie") + "      Klasa: " + className + "      Dni: " + Get("dni") + " (wygrane " + Get("wygrane") + ")", bold);
-            tab = GUILayout.Toolbar(tab, new string[] { "Klasa", "Umiejętności", "Drużyna", "Osiągnięcia" });
-            scroll = GUILayout.BeginScrollView(scroll);
-
-            if (tab == 0)
-            {
-                bool canChange = InBase();
-                if (!canChange) GUILayout.Label("Klasę można zmienić tylko w bazie.", small);
-                for (int i = 0; i < Classes.Length; i++)
-                {
-                    GUILayout.BeginVertical(GUI.skin.box);
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Label((className == Classes[i] ? "► " : "") + Classes[i], bold, GUILayout.Width(160));
-                    GUI.enabled = canChange && className != Classes[i];
-                    if (GUILayout.Button("Wybierz", GUILayout.Width(90)))
-                    {
-                        className = Classes[i]; CheckAchievements(); Save();
-                        nextApply = 0f;
-                    }
-                    GUI.enabled = true;
-                    GUILayout.EndHorizontal();
-                    GUILayout.Label(ClassDesc[i], small);
-                    GUILayout.EndVertical();
-                }
-            }
-            else if (tab == 1 || tab == 2)
-            {
-                bool team = tab == 2;
-                if (team) GUILayout.Label("Ulepszenia drużyny kupuje i wykorzystuje HOST – działają na wszystkich graczy.", small);
-                bool host = IsHost();
-                foreach (Skill s in Skills)
-                {
-                    if (s.Team != team) continue;
-                    int lvl = Get(s.Id);
-                    GUILayout.BeginVertical(GUI.skin.box);
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Label(s.Name + "  [" + lvl + "/" + s.Max + "]", bold, GUILayout.Width(260));
-                    if (lvl < s.Max)
-                    {
-                        int cost = Cost(lvl + 1);
-                        GUI.enabled = Get("zoledzie") >= cost && (!team || host);
-                        if (GUILayout.Button("Kup (" + cost + ")", GUILayout.Width(110)))
-                        {
-                            Set("zoledzie", Get("zoledzie") - cost);
-                            Set(s.Id, lvl + 1);
-                            Save();
-                            nextApply = 0f;
-                        }
-                        GUI.enabled = true;
-                    }
-                    else GUILayout.Label("MAKS", GUILayout.Width(110));
-                    GUILayout.EndHorizontal();
-                    GUILayout.Label(s.Desc, small);
-                    GUILayout.EndVertical();
-                }
-                if (team && !host) GUILayout.Label("Nie jesteś hostem – te ulepszenia kupuje gospodarz gry.", small);
-            }
-            else
-            {
-                foreach (Achievement a in Achievements)
-                {
-                    bool got = Get(a.Id) == 1;
-                    GUILayout.Label((got ? "[x] " : "[  ] ") + a.Name + " – " + a.Desc, got ? bold : small);
-                }
-                GUILayout.Space(6);
-                GUILayout.Label("Każde osiągnięcie daje +10 Żołędzi.", small);
-            }
-
-            GUILayout.EndScrollView();
-            if (GUILayout.Button("Zamknij")) showWindow = false;
-            GUI.DragWindow(new Rect(0, 0, 10000, 22));
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < max; i++) b.Append(i < lvl ? "● " : "○ ");
+            return b.ToString();
         }
 
+        private void DrawWindow(int id)
+        {
+            // nagłówek
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("ROZWÓJ GNOMA", sTitle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("<color=#FFD166>" + Get("zoledzie") + "</color> Żołędzi", sHeader, GUILayout.Width(170));
+            if (GUILayout.Button("X", sBtn, GUILayout.Width(40), GUILayout.Height(34))) showWindow = false;
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Klasa: <b>" + className + "</b>    •    Dni: " + Get("dni") + "    •    Wygrane: " + Get("wygrane"), sTextDim);
+            GUILayout.Space(6);
+
+            // zakładki
+            string[] tabs = { "Klasa", "Umiejętności", "Drużyna", "Osiągnięcia" };
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < tabs.Length; i++)
+                if (GUILayout.Button(tabs[i], i == tab ? sTabSel : sTab, GUILayout.Height(38))) { tab = i; scroll = Vector2.zero; }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(8);
+
+            scroll = GUILayout.BeginScrollView(scroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+            if (tab == 0) DrawClasses();
+            else if (tab == 1) DrawSkills(false);
+            else if (tab == 2) DrawSkills(true);
+            else DrawAchievements();
+            GUILayout.EndScrollView();
+
+            GUILayout.Label("Esc / F4 – zamknij    •    Okno możesz przesuwać, łapiąc za górę", sTextDim);
+            GUI.DragWindow(new Rect(0, 0, 10000, 60));
+        }
+
+        private void DrawClasses()
+        {
+            bool canChange = InBase();
+            if (!canChange) GUILayout.Label("<color=#FF9966>Klasę można zmienić tylko w bazie.</color>", sText);
+            GUILayout.BeginHorizontal();
+            for (int i = 1; i < Classes.Length; i++)
+            {
+                bool sel = className == Classes[i];
+                GUILayout.BeginVertical(sel ? sCardSel : sCard, GUILayout.MinHeight(300));
+                GUI.color = ClassColors[i];
+                GUILayout.Box(GUIContent.none, sCard, GUILayout.Height(10), GUILayout.ExpandWidth(true));
+                GUI.color = Color.white;
+                GUILayout.Label(Classes[i].ToUpper(), sHeader);
+                GUILayout.Space(4);
+                GUILayout.Label(ClassDesc[i], sText);
+                GUILayout.FlexibleSpace();
+                GUI.enabled = canChange && !sel;
+                if (GUILayout.Button(sel ? "WYBRANA" : "WYBIERZ", sel ? sBtn : sBtnBig, GUILayout.Height(42)))
+                {
+                    className = Classes[i]; CheckAchievements(); Save(); nextApply = 0f;
+                    ShowToast("Jesteś teraz: " + className, 4f);
+                }
+                GUI.enabled = true;
+                GUILayout.EndVertical();
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(6);
+            GUI.enabled = canChange && className != "Brak";
+            if (GUILayout.Button("Bez klasy", sBtn, GUILayout.Width(160))) { className = "Brak"; Save(); nextApply = 0f; }
+            GUI.enabled = true;
+        }
+
+        private void DrawSkills(bool team)
+        {
+            bool host = IsHost();
+            if (team)
+                GUILayout.Label(host ? "Ulepszenia drużyny kupujesz Ty (host) – działają na wszystkich graczy."
+                                     : "<color=#FF9966>Ulepszenia drużyny kupuje host gry.</color>", sText);
+            foreach (Skill s in Skills)
+            {
+                if (s.Team != team) continue;
+                int lvl = Get(s.Id);
+                GUILayout.BeginHorizontal(sCard);
+                GUILayout.BeginVertical();
+                GUILayout.Label(s.Name, sHeader);
+                GUILayout.Label(s.Desc, sTextDim);
+                GUILayout.Label(Pips(lvl, s.Max), sPips);
+                GUILayout.EndVertical();
+                GUILayout.FlexibleSpace();
+                if (lvl < s.Max)
+                {
+                    int cost = Cost(lvl + 1);
+                    GUI.enabled = Get("zoledzie") >= cost && (!team || host);
+                    if (GUILayout.Button("KUP\n" + cost + " Żołędzi", sBtnBig, GUILayout.Width(150), GUILayout.Height(64)))
+                    {
+                        Set("zoledzie", Get("zoledzie") - cost);
+                        Set(s.Id, lvl + 1);
+                        Save();
+                        nextApply = 0f;
+                        ShowToast(s.Name + " – poziom " + (lvl + 1), 3f);
+                    }
+                    GUI.enabled = true;
+                }
+                else GUILayout.Label("<color=#FFD166>MAKS</color>", sHeader, GUILayout.Width(150));
+                GUILayout.EndHorizontal();
+            }
+        }
+
+        private void DrawAchievements()
+        {
+            int got = 0;
+            foreach (Achievement a in Achievements) if (Get(a.Id) == 1) got++;
+            GUILayout.Label("Zdobyte: " + got + " / " + Achievements.Length + "   (każde daje +10 Żołędzi)", sText);
+            for (int i = 0; i < Achievements.Length; i += 2)
+            {
+                GUILayout.BeginHorizontal();
+                for (int k = i; k < i + 2 && k < Achievements.Length; k++)
+                {
+                    Achievement a = Achievements[k];
+                    bool have = Get(a.Id) == 1;
+                    GUILayout.BeginVertical(have ? sCardSel : sCard, GUILayout.Width(Mathf.Max(200f, window.width / 2f - 40f)));
+                    GUILayout.Label((have ? "<color=#FFD166>★</color> " : "<color=#776655>☆</color> ") + a.Name, sHeader);
+                    GUILayout.Label(a.Desc, have ? sText : sTextDim);
+                    GUILayout.EndVertical();
+                }
+                GUILayout.EndHorizontal();
+            }
+        }
     }
 }

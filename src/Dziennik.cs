@@ -214,6 +214,8 @@ namespace Dziennik
 
         // ---------- wyświetlanie ----------
 
+        public static void Open() { if (Instance != null) Instance.showWindow = true; }
+
         private void OnGUI()
         {
             Event ev = Event.current;

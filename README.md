@@ -12,6 +12,7 @@ Zestaw modów (BepInEx 5) do gry **Burglin' Gnomes**.
 | **Dziennik i statystyki** | Na koniec dnia tabelka: kto ile gnomium oddał i kto ile razy zginął. Historia wszystkich dni pod **F3**. | każdy (gnomium liczy host) |
 | **Wyzwania dnia** | Losowy **modyfikator dnia** (ciemność, mgła, dziadek z kawą, zaspany dziadek, niska grawitacja, złota gorączka), **wściekły dziadek** (hałas = szybszy), **alarm** po serii hałasów, **skarb dnia** – świecący przedmiot wart 5×. | host (efekty wizualne – każdy z modem) |
 | **Rozwój gnoma** | **F4**: Żołędzie za każdy dzień, **klasy** (Złodziej, Siłacz, Zwiadowca, Saper), **umiejętności** (szybkość, skok, stamina, siła, hak), ulepszenia drużyny (**plecak** +1 miejsce, **ciche kroki**), **osiągnięcia**. | każdy dla siebie (drużynowe – host) |
+| **Tablica gnoma** | W bazie stoi drewniana tablica – podejdź, spójrz i naciśnij **E**: ładne menu z klasami, umiejętnościami, drużyną, osiągnięciami, dziennikiem i radiem. Tablicę można przestawić i zmienić jej rozmiar. | każdy dla siebie |
 
 ## Instalacja i aktualizacja (jeden plik)
 

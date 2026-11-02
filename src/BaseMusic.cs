@@ -27,6 +27,37 @@ namespace BaseMusic
     [BepInPlugin("pl.krystian.basemusic", "Muzyka i radio w bazie", "1.1.0")]
     public class BaseMusicPlugin : BaseUnityPlugin
     {
+        private static BaseMusicPlugin instance;
+
+        // ---- API dla Tablicy gnoma ----
+        public static string Status()
+        {
+            if (instance == null) return "";
+            if (!instance.cEnabled.Value) return "wyłączone";
+            if (instance.userPaused) return "pauza";
+            if (instance.RadioMode) return instance.stations.Count > 0 ? "Radio: " + instance.CurrentStation().Key : "Radio: brak stacji";
+            return "Pliki z folderu Muzyka";
+        }
+        public static void NextStation()
+        {
+            if (instance == null) return;
+            instance.userPaused = false;
+            if (instance.RadioMode)
+            {
+                if (instance.stations.Count > 0)
+                {
+                    instance.cStationIndex.Value = (instance.cStationIndex.Value + 1) % instance.stations.Count;
+                    if (instance.radioOpen) instance.OpenStation();
+                }
+            }
+            else { instance.source.Stop(); if (!instance.loading) instance.NextFile(); }
+        }
+        public static void TogglePause() { if (instance != null) instance.userPaused = !instance.userPaused; }
+        public static void ToggleSource() { if (instance != null) instance.cSource.Value = instance.RadioMode ? "Pliki" : "Radio"; }
+        public static void PlaceRadioHere()
+        {
+            if (instance != null && instance.PlaceInFrontOfCamera(instance.HomeTransform())) instance.ShowToast("Radio postawione tutaj");
+        }
         // ---------- ustawienia ----------
         private ConfigEntry<bool> cEnabled;
         private ConfigEntry<string> cSource;
@@ -84,6 +115,7 @@ namespace BaseMusic
 
         private void Awake()
         {
+            instance = this;
             cEnabled = Config.Bind("General", "Enabled", true, "Wlacza muzyke/radio w bazie.");
             cSource = Config.Bind("General", "Source", "Radio", "Zrodlo: Radio albo Pliki (F8 przelacza).");
             cVolume = Config.Bind("General", "Volume", 0.5f, "Glosnosc 0-1.");

@@ -26,6 +26,8 @@ namespace ModMenu
     [BepInPlugin("pl.krystian.modmenu", "Mod Menu", "1.3.0")]
     public class ModMenuPlugin : BaseUnityPlugin
     {
+        private static ModMenuPlugin instance;
+        public static void Open() { if (instance != null) instance.SetOpen(true); }
         private class ModRow
         {
             public string Name;
@@ -64,6 +66,7 @@ namespace ModMenu
 
         private void Awake()
         {
+            instance = this;
             Application.quitting += ApplyPendingChanges;
             LoadNames();
             CheckForUpdate();
