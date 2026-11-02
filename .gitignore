@@ -1,0 +1,5 @@
+# Nie wrzucamy plikow gry ani skompilowanych modow
+*.dll
+*.dll.off
+Gnomium_Data/
+BepInEx/
