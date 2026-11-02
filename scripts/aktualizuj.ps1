@@ -108,7 +108,9 @@ try {
     $refs = @(
         "$managed\mscorlib.dll", "$managed\netstandard.dll", "$managed\System.dll", "$managed\System.Core.dll",
         "$managed\UnityEngine.dll", "$managed\UnityEngine.CoreModule.dll", "$managed\UnityEngine.IMGUIModule.dll",
-        "$managed\UnityEngine.InputLegacyModule.dll", "$core\BepInEx.dll", "$core\0Harmony.dll"
+        "$managed\UnityEngine.InputLegacyModule.dll", "$managed\UnityEngine.AudioModule.dll",
+        "$managed\UnityEngine.UnityWebRequestModule.dll", "$managed\UnityEngine.UnityWebRequestAudioModule.dll",
+        "$core\BepInEx.dll", "$core\0Harmony.dll"
     ) | Where-Object { Test-Path -LiteralPath $_ }
 
     $ok = 0; $fail = 0
@@ -148,7 +150,7 @@ try {
             Start-Sleep -Seconds 2
             Start-Process "steam://rungameid/3844970"
         } else {
-            Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK (host)."
+            Say "Uruchom gre przez Steam. F1 = menu modow, F2 = AK (host), F6/F7 = muzyka w bazie."
         }
     } else {
         Say "[UWAGA] $ok modow OK, $fail z bledem. Wyslij zrzut ekranu autorowi modow." "Yellow"

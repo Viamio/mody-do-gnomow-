@@ -7,6 +7,7 @@ Zestaw modów (BepInEx 5) do gry **Burglin' Gnomes**.
 | **Keep Progress On Loss** | Po przegranej zostaje dom, ulepszenia, meble i surowce w magazynie. Tracisz tylko ekwipunek z wyprawy. | host |
 | **Mod Menu** | Przycisk **MODY** w menu głównym i **F1** w grze: lista modów, włączanie/wyłączanie, zmiana nazw i przycisk **Aktualizuj mody**. | każdy, kto chce menu |
 | **Gnome AK** | Na start dnia host dostaje broń z gry przerobioną na „AK”: 30 naboi, przeładowanie, ogień ciągły, rosnący rozrzut. **F2** = kolejna broń (host). | host (ogień ciągły – każdy z modem) |
+| **Muzyka w bazie** | Twoja muzyka gra w bazie i cichnie na wyprawie. Wrzuć pliki **.mp3 / .ogg / .wav** do folderu **`Muzyka`** w folderze gry (tworzy się sam). **F6** = następny utwór, **F7** = pauza. | każdy dla siebie |
 
 ## Instalacja i aktualizacja (jeden plik)
 
@@ -33,6 +34,7 @@ Pliki w `BepInEx\config\`:
 - `pl.krystian.keepprogressonloss.cfg` – `Enabled`
 - `pl.krystian.gnomeak.cfg` – magazynek, szybkostrzelność, rozrzut, odrzut
 - `ModMenu.names.txt` – własne nazwy modów
+- `pl.krystian.basemusic.cfg` – głośność, losowa kolejność, czas wyciszania, muzyka w menu głównym
 
 ## Odinstalowanie
 
