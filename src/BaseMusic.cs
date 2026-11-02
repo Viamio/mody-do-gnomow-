@@ -154,7 +154,7 @@ namespace BaseMusic
             if (homeManager == null && Time.unscaledTime >= nextHomeSearch)
             {
                 nextHomeSearch = Time.unscaledTime + 2f;
-                homeManager = UnityEngine.Object.FindObjectOfType(homeManagerType) as Component;
+                homeManager = UnityEngine.Object.FindAnyObjectByType(homeManagerType) as Component;
             }
             if (homeManager == null) return null;
             try
@@ -346,7 +346,7 @@ namespace BaseMusic
             Send("vol 0");
             Send("open " + st.Value);
             radioOpen = true;
-            ShowToast("📻 " + st.Key);
+            ShowToast("Radio: " + st.Key + "  (F6 = nastepna stacja)");
             Logger.LogInfo("Radio: " + st.Key + " (" + st.Value + ")");
         }
 
