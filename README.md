@@ -10,9 +10,10 @@ Zestaw modów (BepInEx 5) do gry **Burglin' Gnomes**.
 
 ## Instalacja i aktualizacja (jeden plik)
 
-1. Pobierz **[AKTUALIZUJ.bat](https://github.com/Viamio/mody-do-gnomow-/releases/latest/download/AKTUALIZUJ.bat)**.
-2. Wrzuć go do folderu gry (Steam → prawy klik na grze → Zarządzaj → Przeglądaj pliki lokalne) i kliknij dwa razy.
-3. Gotowe. Uruchom grę normalnie przez Steam.
+1. Pobierz paczkę: **[mody-do-gnomow.zip](https://github.com/Viamio/mody-do-gnomow-/archive/refs/heads/main.zip)**.
+2. Otwórz ZIP i wyciągnij z niego **tylko plik `AKTUALIZUJ.bat`** do folderu gry
+   (Steam → prawy klik na grze → Zarządzaj → Przeglądaj pliki lokalne).
+3. Kliknij `AKTUALIZUJ.bat` dwa razy. Gotowe – uruchom grę normalnie przez Steam.
 
 Aktualizacja = **zamknij grę i kliknij AKTUALIZUJ.bat jeszcze raz**.
 
